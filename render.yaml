@@ -1,0 +1,10 @@
+# Render deployment configuration for FastAPI backend
+services:
+  - type: web
+    name: the-law-go-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true

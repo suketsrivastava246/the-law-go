@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+:root {
+  --background: #faf9f6; /* Warm ivory/white */
+  --foreground: #0f172a; /* Slate 900 for text */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: #1e3a8a; /* Deep navy blue */
+  --color-primary-dark: #172554;
+  --color-gold: #c5a880; /* Subtle gold */
+  --color-gold-light: #e6dac6;
+  --color-ivory: #faf9f6;
+  
+  --font-sans: "Inter", var(--font-geist-sans), sans-serif;
+  --font-serif: "Merriweather", serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Utilities */
+.btn-primary {
+  @apply bg-primary text-white px-6 py-3 rounded-lg font-medium transition-all hover:bg-primary-dark hover:shadow-lg focus:ring-2 focus:ring-primary focus:outline-none;
+}
+
+.btn-outline {
+  @apply border-2 border-primary text-primary px-6 py-3 rounded-lg font-medium transition-all hover:bg-primary hover:text-white focus:ring-2 focus:ring-primary focus:outline-none;
+}
+
+.btn-gold {
+  @apply bg-gold text-white px-6 py-3 rounded-lg font-medium transition-all hover:brightness-95 hover:shadow-lg focus:ring-2 focus:ring-gold focus:outline-none;
+}
+
+.card {
+  @apply bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300;
+}
+
+.section-padding {
+  @apply py-16 md:py-24 px-4 md:px-8 max-w-7xl mx-auto;
+}
