@@ -18,7 +18,7 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
-      const response = await fetch("${API_BASE}/api/auth/login", {
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -167,4 +167,6 @@ export default function LoginPage() {
     </div>
   );
 }
+
+
 

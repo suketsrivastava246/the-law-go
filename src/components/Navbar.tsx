@@ -27,7 +27,7 @@ export default function Navbar() {
       return;
     }
     try {
-      const res = await fetch("${API_BASE}/api/auth/me", {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -221,4 +221,5 @@ export default function Navbar() {
     </nav>
   );
 }
+
 

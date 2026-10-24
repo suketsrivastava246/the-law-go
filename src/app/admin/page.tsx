@@ -99,7 +99,7 @@ export default function AdminPortal() {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) { setCurrentUser(null); setAuthLoading(false); return; }
     try {
-      const res = await fetch("${API_BASE}/api/auth/me", {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setCurrentUser(await res.json());
@@ -112,7 +112,7 @@ export default function AdminPortal() {
   const loginAsAdmin = async () => {
     setAuthLoading(true);
     try {
-      const res = await fetch("${API_BASE}/api/auth/login", {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ username: "admin@thelawgo.com", password: "admin123" }),
@@ -767,3 +767,4 @@ export default function AdminPortal() {
     </div>
   );
 }
+

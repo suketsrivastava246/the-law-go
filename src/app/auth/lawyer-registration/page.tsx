@@ -25,7 +25,7 @@ export default function LawyerRegistrationPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("${API_BASE}/api/auth/register-lawyer", {
+      const response = await fetch(`${API_BASE}/api/auth/register-lawyer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -183,4 +183,5 @@ export default function LawyerRegistrationPage() {
     </div>
   );
 }
+
 

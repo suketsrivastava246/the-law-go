@@ -47,7 +47,7 @@ function BookingContent() {
     // 2. Check if logged in
     const token = localStorage.getItem("token");
     if (token) {
-      fetch("${API_BASE}/api/auth/me", {
+      fetch(`${API_BASE}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then((res) => (res.ok ? res.json() : null))
@@ -69,7 +69,7 @@ function BookingContent() {
 
   const loginDemoClient = async () => {
     try {
-      const res = await fetch("${API_BASE}/api/auth/login", {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -420,4 +420,5 @@ export default function BookingPage() {
     </Suspense>
   );
 }
+
 

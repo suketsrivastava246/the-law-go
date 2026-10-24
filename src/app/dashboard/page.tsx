@@ -49,7 +49,7 @@ export default function UserDashboard() {
   const loginDemoClient = async () => {
     setLoading(true);
     try {
-      const res = await fetch("${API_BASE}/api/auth/login", {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -335,4 +335,5 @@ export default function UserDashboard() {
     </div>
   );
 }
+
 

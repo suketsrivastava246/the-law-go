@@ -61,7 +61,7 @@ export default function AILegalAssistant() {
     setIsTyping(true);
 
     try {
-      const res = await fetch("${API_BASE}/api/ai/chat", {
+      const res = await fetch(`${API_BASE}/api/ai/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: query }),
@@ -238,4 +238,5 @@ export default function AILegalAssistant() {
     </div>
   );
 }
+
 
