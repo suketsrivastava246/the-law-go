@@ -1,16 +1,15 @@
 /**
  * Central API base URL and fetch helper.
- * In development:  uses http://localhost:8000
- * In production:   uses NEXT_PUBLIC_API_URL environment variable
+ * When NEXT_PUBLIC_API_URL is empty, uses internal Next.js API routes (relative path ""),
+ * allowing frontend and backend to run 100% unified on Netlify or localhost without external servers.
  */
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export const API_URL = API_BASE;
 export default API_BASE;
 
 export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
-  // Ensure the endpoint properly leads with /api unless already present or root
+  // Ensure the endpoint properly leads with /api unless already present
   const cleanEndpoint = endpoint.startsWith("/api")
     ? endpoint
     : `/api${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
@@ -35,8 +34,14 @@ export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   });
 
   if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    throw new Error(errorBody.detail || `Request failed with status ${res.status}`);
+    let errorDetail = `Request failed with status ${res.status}`;
+    try {
+      const errorBody = await res.json();
+      errorDetail = errorBody.detail || errorDetail;
+    } catch {
+      // not JSON
+    }
+    throw new Error(errorDetail);
   }
 
   const contentType = res.headers.get("content-type");
