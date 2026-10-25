@@ -6,7 +6,7 @@ import API_BASE from "@/lib/api";
 import {
   Shield, Trash2, Edit3, Plus, Scale, BookOpen,
   CheckCircle2, AlertCircle, Search, RefreshCw, X, ArrowLeft,
-  Check, Lock, ExternalLink, Image as ImageIcon, EyeOff, Eye, GripVertical
+  Check, Lock, ExternalLink, Image as ImageIcon, EyeOff, Eye, User, Phone, Mail
 } from "lucide-react";
 import { fetchAPI } from "@/lib/api";
 
@@ -14,6 +14,9 @@ import { fetchAPI } from "@/lib/api";
 type Lawyer = {
   id: number;
   user_id: number;
+  full_name?: string;
+  email?: string;
+  phone?: string;
   specialization: string;
   experience_years: number;
   bar_number: string;
@@ -23,7 +26,22 @@ type Lawyer = {
   about: string;
   is_verified: boolean;
   avatar_url?: string;
-  user: { id: number; full_name: string; email: string; phone: string; role: string };
+  languages?: string;
+  user?: {
+    full_name: string;
+    email: string;
+    phone?: string;
+  };
+};
+
+type Client = {
+  id: number;
+  full_name: string;
+  email: string;
+  phone: string;
+  role: string;
+  is_active: boolean;
+  appointments_count?: number;
 };
 
 type Resource = {
@@ -64,13 +82,22 @@ const BLANK_SLIDE: Omit<HeroSlide, "id" | "created_at"> = {
 export default function AdminPortal() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"lawyers" | "documents" | "slides">("lawyers");
+  const [activeTab, setActiveTab] = useState<"lawyers" | "clients" | "documents" | "slides">("lawyers");
 
   // Lawyers state
   const [lawyers, setLawyers] = useState<Lawyer[]>([]);
   const [lawyersLoading, setLawyersLoading] = useState(false);
   const [lawyerSearch, setLawyerSearch] = useState("");
   const [lawyerToDelete, setLawyerToDelete] = useState<Lawyer | null>(null);
+  const [editingLawyer, setEditingLawyer] = useState<Lawyer | null>(null);
+
+  // Clients state
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [isCreatingClient, setIsCreatingClient] = useState(false);
 
   // Documents state
   const [resources, setResources] = useState<Resource[]>([]);
@@ -138,6 +165,15 @@ export default function AdminPortal() {
     } finally { setLawyersLoading(false); }
   };
 
+  const loadClients = async () => {
+    setClientsLoading(true);
+    try {
+      const data = await fetchAPI("/clients");
+      if (data) setClients(data);
+    } catch (err) { console.error(err); }
+    finally { setClientsLoading(false); }
+  };
+
   const loadResources = async () => {
     setResourcesLoading(true);
     try { const data = await fetchAPI("/resources/"); if (data) setResources(data); }
@@ -155,6 +191,7 @@ export default function AdminPortal() {
   useEffect(() => {
     if (currentUser?.role === "admin") {
       loadLawyers();
+      loadClients();
       loadResources();
       loadSlides();
     }
@@ -166,7 +203,7 @@ export default function AdminPortal() {
     try {
       await fetchAPI(`/lawyers/${lawyerToDelete.id}`, { method: "DELETE" });
       setLawyers((p) => p.filter((l) => l.id !== lawyerToDelete.id));
-      showToast(`Adv. ${lawyerToDelete.user?.full_name} removed.`);
+      showToast(`Adv. ${lawyerToDelete.user?.full_name || lawyerToDelete.full_name} removed.`);
       setLawyerToDelete(null);
     } catch (err: any) { showToast(err.message || "Failed", "error"); }
   };
@@ -174,6 +211,61 @@ export default function AdminPortal() {
   const handleVerifyLawyer = async (id: number) => {
     try { await fetchAPI(`/lawyers/${id}/verify`, { method: "POST" }); showToast("Lawyer verified!"); loadLawyers(); }
     catch (err: any) { showToast(err.message || "Failed", "error"); }
+  };
+
+  const handleSaveLawyer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLawyer) return;
+    try {
+      const updated = await fetchAPI(`/lawyers/${editingLawyer.id}`, {
+        method: "PUT",
+        body: JSON.stringify(editingLawyer),
+      });
+      setLawyers((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+      showToast(`Lawyer "${editingLawyer.full_name || editingLawyer.user?.full_name}" profile updated.`);
+      setEditingLawyer(null);
+    } catch (err: any) {
+      showToast(err.message || "Failed to update lawyer", "error");
+    }
+  };
+
+  // ── Client Actions ────────────────────────────────────────────────────────
+  const handleSaveClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingClient) return;
+    try {
+      if (isCreatingClient) {
+        const created = await fetchAPI("/clients", {
+          method: "POST",
+          body: JSON.stringify(editingClient),
+        });
+        setClients((prev) => [...prev, created]);
+        showToast(`Client "${created.full_name}" registered.`);
+      } else {
+        const updated = await fetchAPI(`/clients/${editingClient.id}`, {
+          method: "PUT",
+          body: JSON.stringify(editingClient),
+        });
+        setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+        showToast(`Client "${updated.full_name}" updated.`);
+      }
+      setEditingClient(null);
+      setIsCreatingClient(false);
+    } catch (err: any) {
+      showToast(err.message || "Failed to save client", "error");
+    }
+  };
+
+  const confirmDeleteClient = async () => {
+    if (!clientToDelete) return;
+    try {
+      await fetchAPI(`/clients/${clientToDelete.id}`, { method: "DELETE" });
+      setClients((prev) => prev.filter((c) => c.id !== clientToDelete.id));
+      showToast(`Client "${clientToDelete.full_name}" removed.`);
+      setClientToDelete(null);
+    } catch (err: any) {
+      showToast(err.message || "Failed to delete client", "error");
+    }
   };
 
   // ── Resource Actions ──────────────────────────────────────────────────────
@@ -286,7 +378,22 @@ export default function AdminPortal() {
 
   const filteredLawyers = lawyers.filter((l) => {
     const q = lawyerSearch.toLowerCase();
-    return (l.user?.full_name?.toLowerCase().includes(q) || l.specialization?.toLowerCase().includes(q) || l.bar_number?.toLowerCase().includes(q) || (l.location && l.location.toLowerCase().includes(q)));
+    const name = l.user?.full_name || l.full_name || "";
+    return (
+      name.toLowerCase().includes(q) ||
+      l.specialization?.toLowerCase().includes(q) ||
+      l.bar_number?.toLowerCase().includes(q) ||
+      (l.location && l.location.toLowerCase().includes(q))
+    );
+  });
+
+  const filteredClients = clients.filter((c) => {
+    const q = clientSearch.toLowerCase();
+    return (
+      c.full_name?.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q) ||
+      c.phone?.toLowerCase().includes(q)
+    );
   });
 
   const filteredResources = resources.filter((r) => {
@@ -336,16 +443,17 @@ export default function AdminPortal() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 mb-8 space-x-2">
+        <div className="flex border-b border-gray-200 mb-8 space-x-2 overflow-x-auto scrollbar-none">
           {[
-            { key: "lawyers", label: `Manage Lawyers (${lawyers.length})`, icon: <Scale className="h-4 w-4" /> },
+            { key: "lawyers", label: `Lawyers (${lawyers.length})`, icon: <Scale className="h-4 w-4" /> },
+            { key: "clients", label: `Clients (${clients.length})`, icon: <User className="h-4 w-4" /> },
             { key: "documents", label: `Legal Documents (${resources.length})`, icon: <BookOpen className="h-4 w-4" /> },
             { key: "slides", label: `Hero Slides (${slides.length})`, icon: <ImageIcon className="h-4 w-4" /> },
           ].map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
-              className={`flex items-center gap-2 py-3 px-5 text-sm font-bold border-b-2 transition ${activeTab === tab.key ? "border-primary text-primary bg-white rounded-t-lg shadow-xs" : "border-transparent text-gray-500 hover:text-slate-800"}`}
+              className={`flex items-center gap-2 py-3 px-5 text-sm font-bold border-b-2 transition whitespace-nowrap ${activeTab === tab.key ? "border-primary text-primary bg-white rounded-t-lg shadow-xs" : "border-transparent text-gray-500 hover:text-slate-800"}`}
             >
               {tab.icon}<span>{tab.label}</span>
             </button>
@@ -385,38 +493,173 @@ export default function AdminPortal() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {filteredLawyers.map((lawyer) => (
-                        <tr key={lawyer.id} className="hover:bg-blue-50/40 transition">
+                      {filteredLawyers.map((lawyer) => {
+                        const name = lawyer.full_name || lawyer.user?.full_name || "Legal Counsel";
+                        const email = lawyer.email || lawyer.user?.email || "";
+                        return (
+                          <tr key={lawyer.id} className="hover:bg-blue-50/40 transition">
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-3">
+                                {lawyer.avatar_url ? (
+                                  <img src={lawyer.avatar_url} alt={name} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">{name.charAt(0) || "L"}</div>
+                                )}
+                                <div>
+                                  <p className="font-bold text-slate-900">{name}</p>
+                                  <p className="text-xs text-gray-500">{email}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-4 px-4"><span className="font-medium text-slate-800">{lawyer.specialization}</span><p className="text-xs text-gray-400">{lawyer.location || "Remote"}</p></td>
+                            <td className="py-4 px-4 font-mono text-xs font-semibold text-slate-700">{lawyer.bar_number}</td>
+                            <td className="py-4 px-4"><p className="font-semibold text-slate-800">{lawyer.experience_years} years</p><p className="text-xs text-primary font-bold">${lawyer.fee_per_hour}/hr</p></td>
+                            <td className="py-4 px-4">
+                              {lawyer.is_verified ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><Check className="h-3 w-3" /> Verified</span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">Pending Review</span>
+                              )}
+                            </td>
+                            <td className="py-4 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {!lawyer.is_verified && (
+                                  <button onClick={() => handleVerifyLawyer(lawyer.id)} className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold py-1.5 px-2.5 rounded-md transition">Approve</button>
+                                )}
+                                <button
+                                  onClick={() => setEditingLawyer({
+                                    ...lawyer,
+                                    full_name: name,
+                                    email: email,
+                                    phone: lawyer.phone || lawyer.user?.phone || "",
+                                  })}
+                                  className="bg-blue-50 hover:bg-primary text-primary hover:text-white border border-blue-200 hover:border-primary py-1.5 px-2.5 text-xs font-bold rounded-md transition flex items-center gap-1"
+                                >
+                                  <Edit3 className="h-3.5 w-3.5" /><span>Edit</span>
+                                </button>
+                                <Link href={`/lawyers/${lawyer.id}`} className="btn-outline py-1.5 px-2.5 text-xs font-semibold rounded-md">View</Link>
+                                <button onClick={() => setLawyerToDelete(lawyer)} className="bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-red-600 py-1.5 px-2.5 text-xs font-bold rounded-md transition flex items-center gap-1">
+                                  <Trash2 className="h-3.5 w-3.5" /><span>Remove</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ TAB 2: CLIENT MANAGEMENT (NEW) ══════════════════════════════════ */}
+        {activeTab === "clients" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+              <div className="relative w-full sm:w-96">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search clients by name, email, phone..."
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary"
+                />
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button onClick={loadClients} className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                </button>
+                <button
+                  onClick={() => {
+                    setIsCreatingClient(true);
+                    setEditingClient({
+                      id: 0,
+                      full_name: "",
+                      email: "",
+                      phone: "+1 555-010-0000",
+                      role: "client",
+                      is_active: true,
+                    });
+                  }}
+                  className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add New Client
+                </button>
+              </div>
+            </div>
+
+            {clientsLoading ? (
+              <div className="py-20 text-center">
+                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-sm text-gray-500">Loading registered clients...</p>
+              </div>
+            ) : filteredClients.length === 0 ? (
+              <div className="card p-12 text-center">
+                <User className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <h3 className="text-base font-bold text-slate-800">No clients found</h3>
+                <p className="text-gray-500 text-xs mt-1">Register new clients or adjust search filters.</p>
+              </div>
+            ) : (
+              <div className="card overflow-hidden border border-gray-200 shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase font-bold text-gray-600">
+                        <th className="py-3.5 px-4">Client Name</th>
+                        <th className="py-3.5 px-4">Email</th>
+                        <th className="py-3.5 px-4">Phone</th>
+                        <th className="py-3.5 px-4">Bookings</th>
+                        <th className="py-3.5 px-4">Account Status</th>
+                        <th className="py-3.5 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredClients.map((client) => (
+                        <tr key={client.id} className="hover:bg-blue-50/40 transition">
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-3">
-                              {lawyer.avatar_url ? (
-                                <img src={lawyer.avatar_url} alt={lawyer.user?.full_name} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
-                              ) : (
-                                <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">{lawyer.user?.full_name?.charAt(0) || "L"}</div>
-                              )}
-                              <div>
-                                <p className="font-bold text-slate-900">{lawyer.user?.full_name}</p>
-                                <p className="text-xs text-gray-500">{lawyer.user?.email}</p>
+                              <div className="w-9 h-9 rounded-full bg-blue-100 text-primary flex items-center justify-center font-bold text-sm">
+                                {client.full_name?.charAt(0) || "C"}
                               </div>
+                              <p className="font-bold text-slate-900">{client.full_name}</p>
                             </div>
                           </td>
-                          <td className="py-4 px-4"><span className="font-medium text-slate-800">{lawyer.specialization}</span><p className="text-xs text-gray-400">{lawyer.location || "Remote"}</p></td>
-                          <td className="py-4 px-4 font-mono text-xs font-semibold text-slate-700">{lawyer.bar_number}</td>
-                          <td className="py-4 px-4"><p className="font-semibold text-slate-800">{lawyer.experience_years} years</p><p className="text-xs text-primary font-bold">${lawyer.fee_per_hour}/hr</p></td>
+                          <td className="py-4 px-4 text-gray-600">{client.email}</td>
+                          <td className="py-4 px-4 font-mono text-xs text-slate-700">{client.phone || "—"}</td>
                           <td className="py-4 px-4">
-                            {lawyer.is_verified ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><Check className="h-3 w-3" /> Verified</span>
+                            <span className="bg-blue-50 text-primary text-xs font-bold px-2.5 py-1 rounded-full border border-blue-200">
+                              {client.appointments_count ?? 1} consultations
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            {client.is_active ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                <Check className="h-3 w-3" /> Active
+                              </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">Pending Review</span>
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
+                                Suspended
+                              </span>
                             )}
                           </td>
                           <td className="py-4 px-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {!lawyer.is_verified && (
-                                <button onClick={() => handleVerifyLawyer(lawyer.id)} className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold py-1.5 px-2.5 rounded-md transition">Approve</button>
-                              )}
-                              <Link href={`/lawyers/${lawyer.id}`} className="btn-outline py-1.5 px-2.5 text-xs font-semibold rounded-md">View</Link>
-                              <button onClick={() => setLawyerToDelete(lawyer)} className="bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-red-600 py-1.5 px-2.5 text-xs font-bold rounded-md transition flex items-center gap-1">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => {
+                                  setIsCreatingClient(false);
+                                  setEditingClient({ ...client });
+                                }}
+                                className="bg-blue-50 hover:bg-primary text-primary hover:text-white border border-blue-200 hover:border-primary py-1.5 px-2.5 text-xs font-bold rounded-md transition flex items-center gap-1"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" /><span>Edit</span>
+                              </button>
+                              <button
+                                onClick={() => setClientToDelete(client)}
+                                className="bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-red-600 py-1.5 px-2.5 text-xs font-bold rounded-md transition flex items-center gap-1"
+                              >
                                 <Trash2 className="h-3.5 w-3.5" /><span>Remove</span>
                               </button>
                             </div>
@@ -431,7 +674,7 @@ export default function AdminPortal() {
           </div>
         )}
 
-        {/* ══ TAB 2: DOCUMENTS ═══════════════════════════════════════════════ */}
+        {/* ══ TAB 3: DOCUMENTS ═══════════════════════════════════════════════ */}
         {activeTab === "documents" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
@@ -449,124 +692,26 @@ export default function AdminPortal() {
             </div>
 
             {resourcesLoading ? (
-              <div className="py-20 text-center"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" /></div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {filteredResources.map((res) => {
-                  const isConstitution = res.category.toLowerCase().includes("constitution");
-                  return (
-                    <div key={res.id} className={`card p-6 flex flex-col justify-between border transition shadow-sm hover:shadow-md ${isConstitution ? "border-amber-300 bg-amber-50/20" : "border-gray-200"}`}>
-                      <div>
-                        <div className="flex items-center justify-between mb-3 text-xs">
-                          <span className={`font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${isConstitution ? "bg-amber-100 text-amber-900 border border-amber-300" : "bg-blue-50 text-primary"}`}>{res.category} {isConstitution && "★"}</span>
-                          <span className="text-gray-400 font-medium">{res.read_time}</span>
-                        </div>
-                        <h3 className="font-serif font-bold text-lg text-slate-900 mb-2 leading-snug">{res.title}</h3>
-                        <p className="text-xs text-gray-600 line-clamp-3 mb-4 leading-relaxed">{res.summary}</p>
-                      </div>
-                      <div className="pt-4 border-t border-gray-100 flex items-center justify-between mt-auto">
-                        <span className="text-xs text-gray-400 font-medium">{res.jurisdiction}</span>
-                        <div className="flex items-center gap-2">
-                          <Link href={`/resources/${res.id}`} className="btn-outline py-1.5 px-2.5 text-xs font-semibold rounded-md">View</Link>
-                          <button onClick={() => { setIsCreatingResource(false); setEditingResource(res); }} className="bg-primary hover:bg-primary-dark text-white py-1.5 px-3 text-xs font-bold rounded-md transition flex items-center gap-1.5">
-                            <Edit3 className="h-3.5 w-3.5 text-gold" /><span>Edit</span>
-                          </button>
-                          <button onClick={() => handleDeleteResource(res.id, res.title)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-md transition"><Trash2 className="h-4 w-4" /></button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ══ TAB 3: HERO SLIDES ════════════════════════════════════════════ */}
-        {activeTab === "slides" && (
-          <div className="space-y-6">
-            {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-              <div>
-                <p className="font-bold text-slate-800 text-sm">Homepage Hero Slideshow</p>
-                <p className="text-xs text-gray-500 mt-0.5">Add, edit, or remove slides shown in the circular image area on the homepage. Active slides auto-rotate every 5 seconds.</p>
-              </div>
-              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                <button onClick={loadSlides} className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>
-                <button
-                  onClick={() => { setIsCreatingSlide(true); setPreviewUrl(""); setEditingSlide({ id: 0, ...BLANK_SLIDE }); }}
-                  className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5 shadow-sm"
-                ><Plus className="h-3.5 w-3.5" /> Add New Slide</button>
-              </div>
-            </div>
-
-            {slidesLoading ? (
-              <div className="py-20 text-center"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" /><p className="text-sm text-gray-500">Loading slides...</p></div>
-            ) : slides.length === 0 ? (
-              <div className="card p-16 text-center border-2 border-dashed border-gray-200">
-                <ImageIcon className="h-14 w-14 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-base font-bold text-slate-800 mb-1">No Hero Slides Yet</h3>
-                <p className="text-xs text-gray-500 mb-5">The homepage shows 3 built-in default slides. Add your own to override them.</p>
-                <button onClick={() => { setIsCreatingSlide(true); setPreviewUrl(""); setEditingSlide({ id: 0, ...BLANK_SLIDE }); }} className="btn-primary text-sm py-2 px-5 inline-flex items-center gap-2">
-                  <Plus className="h-4 w-4" /> Add First Slide
-                </button>
-              </div>
+              <div className="py-20 text-center"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" /><p className="text-sm text-gray-500">Loading documents...</p></div>
+            ) : filteredResources.length === 0 ? (
+              <div className="card p-12 text-center"><BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" /><h3 className="text-base font-bold text-slate-800">No resources found</h3></div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {slides.map((slide, idx) => (
-                  <div key={slide.id} className={`card overflow-hidden border transition shadow-sm hover:shadow-lg group ${slide.is_active ? "border-primary/30" : "border-gray-200 opacity-60"}`}>
-                    {/* Slide Image Preview */}
-                    <div className="relative h-44 bg-slate-100 overflow-hidden">
-                      {slide.image_url ? (
-                        <img src={slide.image_url} alt={slide.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=400"; }} />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon className="h-12 w-12" /></div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 to-transparent" />
-                      <div className="absolute top-2 left-2 flex gap-1.5">
-                        <span className="text-[10px] font-bold uppercase bg-primary text-white px-2 py-0.5 rounded-full">Slide {idx + 1}</span>
-                        {slide.is_active ? (
-                          <span className="text-[10px] font-bold uppercase bg-green-500 text-white px-2 py-0.5 rounded-full">Active</span>
-                        ) : (
-                          <span className="text-[10px] font-bold uppercase bg-gray-500 text-white px-2 py-0.5 rounded-full">Hidden</span>
-                        )}
+                {filteredResources.map((res) => (
+                  <div key={res.id} className="card p-5 flex flex-col justify-between border border-gray-200 hover:shadow-md transition">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider bg-blue-50 text-primary px-2.5 py-0.5 rounded-full border border-blue-100">{res.category}</span>
+                        <span className="text-xs text-gray-400">{res.read_time}</span>
                       </div>
-                      <div className="absolute bottom-2 left-3 right-3">
-                        <p className="text-white font-serif font-bold text-sm leading-tight line-clamp-2">{slide.title}</p>
-                      </div>
+                      <h3 className="font-bold text-slate-900 text-base mb-2 line-clamp-2">{res.title}</h3>
+                      <p className="text-xs text-gray-500 line-clamp-3 mb-4 leading-relaxed">{res.summary}</p>
                     </div>
-
-                    {/* Card body */}
-                    <div className="p-4">
-                      {slide.subtitle && <p className="text-xs text-gray-500 line-clamp-2 mb-3">{slide.subtitle}</p>}
-                      <div className="flex items-center gap-2 text-xs text-gray-400 mb-4">
-                        <span className="bg-gray-100 px-2 py-0.5 rounded font-mono">{slide.button_url || "/"}</span>
-                        <span>→</span>
-                        <span className="font-semibold text-slate-600">{slide.button_text}</span>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
-                        <button
-                          onClick={() => handleToggleSlide(slide)}
-                          title={slide.is_active ? "Hide slide" : "Show slide"}
-                          className={`flex-1 py-1.5 text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition ${slide.is_active ? "bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200" : "bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"}`}
-                        >
-                          {slide.is_active ? <><EyeOff className="h-3.5 w-3.5" /> Hide</> : <><Eye className="h-3.5 w-3.5" /> Show</>}
-                        </button>
-                        <button
-                          onClick={() => { setIsCreatingSlide(false); setPreviewUrl(slide.image_url); setEditingSlide(slide); }}
-                          className="flex-1 bg-primary hover:bg-primary-dark text-white py-1.5 text-xs font-bold rounded-md transition flex items-center justify-center gap-1.5"
-                        >
-                          <Edit3 className="h-3.5 w-3.5 text-gold" /> Edit
-                        </button>
-                        <button
-                          onClick={() => setSlideToDelete(slide)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition"
-                          title="Delete slide"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                      <span className="text-[11px] text-gray-400">{res.jurisdiction}</span>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { setIsCreatingResource(false); setEditingResource(res); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition" title="Edit Article"><Edit3 className="h-4 w-4" /></button>
+                        <button onClick={() => handleDeleteResource(res.id, res.title)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition" title="Delete Article"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </div>
                   </div>
@@ -575,196 +720,434 @@ export default function AdminPortal() {
             )}
           </div>
         )}
+
+        {/* ══ TAB 4: HERO SLIDES ═════════════════════════════════════════════ */}
+        {activeTab === "slides" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+              <div>
+                <h2 className="font-bold text-slate-900 text-base">Homepage Hero Carousel Slides</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Add, reorder, show/hide, or delete banners on the homepage slider.</p>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button onClick={loadSlides} className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>
+                <button
+                  onClick={() => { setIsCreatingSlide(true); setEditingSlide({ ...BLANK_SLIDE, id: 0, sort_order: slides.length + 1 }); setPreviewUrl(""); }}
+                  className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5"
+                ><Plus className="h-3.5 w-3.5" /> Add New Slide</button>
+              </div>
+            </div>
+
+            {slidesLoading ? (
+              <div className="py-20 text-center"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" /><p className="text-sm text-gray-500">Loading slides...</p></div>
+            ) : slides.length === 0 ? (
+              <div className="card p-12 text-center"><ImageIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" /><h3 className="text-base font-bold text-slate-800">No slides configured</h3></div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {slides.map((slide) => (
+                  <div key={slide.id} className={`card overflow-hidden border transition flex flex-col justify-between ${slide.is_active ? "border-gray-200 shadow-sm" : "border-dashed border-gray-300 opacity-60 bg-gray-50"}`}>
+                    <div>
+                      <div className="relative h-44 bg-slate-900 overflow-hidden">
+                        <img src={slide.image_url} alt={slide.title} className="w-full h-full object-cover" />
+                        <div className="absolute top-2 left-2 flex gap-1.5">
+                          <span className="bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Order #{slide.sort_order}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${slide.is_active ? "bg-green-500 text-white" : "bg-gray-600 text-gray-200"}`}>{slide.is_active ? "Active" : "Hidden"}</span>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-bold text-slate-900 text-sm mb-1 line-clamp-1">{slide.title}</h3>
+                        {slide.subtitle && <p className="text-xs text-gray-500 line-clamp-2 mb-2">{slide.subtitle}</p>}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                      <button onClick={() => handleToggleSlide(slide)} className="text-xs font-semibold flex items-center gap-1 text-gray-600 hover:text-primary">{slide.is_active ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />} {slide.is_active ? "Hide" : "Show"}</button>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => { setIsCreatingSlide(false); setEditingSlide(slide); setPreviewUrl(slide.image_url); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md"><Edit3 className="h-4 w-4" /></button>
+                        <button onClick={() => setSlideToDelete(slide)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-md"><Trash2 className="h-4 w-4" /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
 
-      {/* ══ MODAL: Confirm Delete Lawyer ══════════════════════════════════════ */}
-      {lawyerToDelete && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-gray-100">
-            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4"><Trash2 className="h-6 w-6" /></div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Remove Lawyer Profile?</h3>
-            <p className="text-sm text-gray-600 mb-6 leading-relaxed">Are you sure you want to remove <strong>{lawyerToDelete.user?.full_name}</strong> (Bar #{lawyerToDelete.bar_number})?</p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setLawyerToDelete(null)} className="btn-outline text-xs py-2 px-4 font-semibold">Cancel</button>
-              <button onClick={confirmDeleteLawyer} className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition">Yes, Remove Lawyer</button>
+      {/* ── MODAL: EDIT LAWYER (NEW) ────────────────────────────────────────── */}
+      {editingLawyer && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="card max-w-2xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-6">
+              <h2 className="text-xl font-serif font-bold text-slate-900 flex items-center gap-2">
+                <Edit3 className="h-5 w-5 text-gold" /> Edit Attorney Profile
+              </h2>
+              <button onClick={() => setEditingLawyer(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg"><X className="h-5 w-5" /></button>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* ══ MODAL: Edit / Create Resource ═════════════════════════════════════ */}
-      {editingResource && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 md:p-8 shadow-2xl border border-gray-100 my-8">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-6">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-primary flex items-center justify-center"><Edit3 className="h-5 w-5" /></div>
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">{isCreatingResource ? "Create Legal Document" : "Edit Legal Document"}</h3>
-                  <p className="text-xs text-gray-500">Update article text, summary, or metadata</p>
-                </div>
-              </div>
-              <button onClick={() => setEditingResource(null)} className="p-1.5 text-gray-400 hover:text-slate-800 rounded-lg"><X className="h-5 w-5" /></button>
-            </div>
-            <form onSubmit={handleSaveResource} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Document Title</label>
-                <input type="text" required value={editingResource.title} onChange={(e) => setEditingResource({ ...editingResource, title: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" />
-              </div>
+            <form onSubmit={handleSaveLawyer} className="space-y-4 text-sm">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Category</label>
-                  <select value={editingResource.category} onChange={(e) => setEditingResource({ ...editingResource, category: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary">
-                    {["Constitution", "Criminal Law", "Corporate Law", "Family Law", "Civil & Property Law", "Cyber Crime", "Taxation", "Consumer Rights"].map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Full Name & Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingLawyer.full_name || ""}
+                    onChange={(e) => setEditingLawyer({ ...editingLawyer, full_name: e.target.value })}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={editingLawyer.email || ""}
+                    onChange={(e) => setEditingLawyer({ ...editingLawyer, email: e.target.value })}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Phone Number</label>
+                  <input
+                    type="text"
+                    value={editingLawyer.phone || ""}
+                    onChange={(e) => setEditingLawyer({ ...editingLawyer, phone: e.target.value })}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Consultation Fee ($/hr)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={editingLawyer.fee_per_hour}
+                    onChange={(e) => setEditingLawyer({ ...editingLawyer, fee_per_hour: parseFloat(e.target.value) || 0 })}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary font-bold text-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Experience (Years)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={editingLawyer.experience_years}
+                    onChange={(e) => setEditingLawyer({ ...editingLawyer, experience_years: parseInt(e.target.value) || 0 })}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Legal Specialization</label>
+                  <select
+                    value={editingLawyer.specialization}
+                    onChange={(e) => setEditingLawyer({ ...editingLawyer, specialization: e.target.value })}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                  >
+                    <option>Family & Marriage Law</option>
+                    <option>Corporate & Business Law</option>
+                    <option>Criminal Law</option>
+                    <option>Civil & Property Law</option>
+                    <option>Cyber Crime</option>
+                    <option>Taxation & Finance</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Jurisdiction</label>
-                  <input type="text" value={editingResource.jurisdiction} onChange={(e) => setEditingResource({ ...editingResource, jurisdiction: e.target.value })} placeholder="e.g. Federal / National" className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" />
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Jurisdiction / Location</label>
+                  <input
+                    type="text"
+                    value={editingLawyer.location}
+                    onChange={(e) => setEditingLawyer({ ...editingLawyer, location: e.target.value })}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                  />
                 </div>
               </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Author</label>
-                  <input type="text" value={editingResource.author} onChange={(e) => setEditingResource({ ...editingResource, author: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" />
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Bar Registration Number</label>
+                  <input
+                    type="text"
+                    value={editingLawyer.bar_number}
+                    onChange={(e) => setEditingLawyer({ ...editingLawyer, bar_number: e.target.value })}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary font-mono"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Read Time</label>
-                  <input type="text" value={editingResource.read_time} onChange={(e) => setEditingResource({ ...editingResource, read_time: e.target.value })} placeholder="e.g. 6 min read" className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" />
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Avatar Image URL</label>
+                  <input
+                    type="url"
+                    value={editingLawyer.avatar_url || ""}
+                    onChange={(e) => setEditingLawyer({ ...editingLawyer, avatar_url: e.target.value })}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary text-xs"
+                  />
                 </div>
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Executive Summary</label>
-                <textarea rows={2} required value={editingResource.summary} onChange={(e) => setEditingResource({ ...editingResource, summary: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" />
+                <label className="block text-xs font-bold text-gray-700 mb-1">Qualifications & Degrees</label>
+                <input
+                  type="text"
+                  value={editingLawyer.qualifications}
+                  onChange={(e) => setEditingLawyer({ ...editingLawyer, qualifications: e.target.value })}
+                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                />
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Full Content (Markdown Supported)</label>
-                <textarea rows={8} required value={editingResource.content} onChange={(e) => setEditingResource({ ...editingResource, content: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-primary focus:border-primary text-xs" />
+                <label className="block text-xs font-bold text-gray-700 mb-1">Professional Bio / About</label>
+                <textarea
+                  rows={3}
+                  value={editingLawyer.about}
+                  onChange={(e) => setEditingLawyer({ ...editingLawyer, about: e.target.value })}
+                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                />
               </div>
-              <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
-                <button type="button" onClick={() => setEditingResource(null)} className="btn-outline text-xs py-2 px-4 font-semibold">Cancel</button>
-                <button type="submit" className="btn-primary text-xs py-2 px-5 font-bold shadow-md">Save & Publish</button>
+
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="lawyer_verified"
+                  checked={editingLawyer.is_verified}
+                  onChange={(e) => setEditingLawyer({ ...editingLawyer, is_verified: e.target.checked })}
+                  className="h-4 w-4 text-primary rounded focus:ring-primary"
+                />
+                <label htmlFor="lawyer_verified" className="text-xs font-semibold text-gray-800 cursor-pointer">
+                  Mark as Verified Attorney (visible on public directory)
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <button type="button" onClick={() => setEditingLawyer(null)} className="btn-outline text-xs py-2 px-4">Cancel</button>
+                <button type="submit" className="btn-primary text-xs py-2 px-5">Save Attorney Changes</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* ══ MODAL: Confirm Delete Slide ═══════════════════════════════════════ */}
-      {slideToDelete && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-gray-100">
-            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4"><Trash2 className="h-6 w-6" /></div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Hero Slide?</h3>
-            <p className="text-sm text-gray-600 mb-6">Remove slide <strong>"{slideToDelete.title}"</strong>? It will disappear from the homepage immediately.</p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setSlideToDelete(null)} className="btn-outline text-xs py-2 px-4 font-semibold">Cancel</button>
-              <button onClick={confirmDeleteSlide} className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition">Yes, Delete Slide</button>
+      {/* ── MODAL: EDIT / CREATE CLIENT (NEW) ───────────────────────────────── */}
+      {editingClient && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="card max-w-md w-full p-6">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200 mb-5">
+              <h2 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" /> {isCreatingClient ? "Add New Client" : "Edit Client Details"}
+              </h2>
+              <button onClick={() => setEditingClient(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg"><X className="h-5 w-5" /></button>
+            </div>
+
+            <form onSubmit={handleSaveClient} className="space-y-4 text-sm">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editingClient.full_name}
+                  onChange={(e) => setEditingClient({ ...editingClient, full_name: e.target.value })}
+                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={editingClient.email}
+                  onChange={(e) => setEditingClient({ ...editingClient, email: e.target.value })}
+                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  value={editingClient.phone}
+                  onChange={(e) => setEditingClient({ ...editingClient, phone: e.target.value })}
+                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="client_active"
+                  checked={editingClient.is_active}
+                  onChange={(e) => setEditingClient({ ...editingClient, is_active: e.target.checked })}
+                  className="h-4 w-4 text-primary rounded focus:ring-primary"
+                />
+                <label htmlFor="client_active" className="text-xs font-semibold text-gray-800 cursor-pointer">
+                  Active Account (allowed to book consultations and log in)
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <button type="button" onClick={() => setEditingClient(null)} className="btn-outline text-xs py-2 px-4">Cancel</button>
+                <button type="submit" className="btn-primary text-xs py-2 px-5">Save Client</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: CONFIRM DELETE CLIENT (NEW) ──────────────────────────────── */}
+      {clientToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="card max-w-sm w-full p-6 text-center">
+            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <h3 className="font-bold text-slate-900 text-lg mb-2">Remove Client?</h3>
+            <p className="text-gray-500 text-xs mb-6">
+              Are you sure you want to delete <span className="font-bold text-slate-800">{clientToDelete.full_name}</span>? Their consultation bookings will also be cancelled.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setClientToDelete(null)} className="btn-outline text-xs py-2 px-4">Cancel</button>
+              <button onClick={confirmDeleteClient} className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2 px-4 rounded-lg">Confirm Delete</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ══ MODAL: Edit / Create Hero Slide ══════════════════════════════════ */}
-      {editingSlide && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 md:p-8 shadow-2xl border border-gray-100 my-8">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-6">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-primary flex items-center justify-center"><ImageIcon className="h-5 w-5" /></div>
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">{isCreatingSlide ? "Add New Hero Slide" : "Edit Hero Slide"}</h3>
-                  <p className="text-xs text-gray-500">This slide will appear on the homepage hero section</p>
-                </div>
-              </div>
-              <button onClick={() => { setEditingSlide(null); setPreviewUrl(""); }} className="p-1.5 text-gray-400 hover:text-slate-800 rounded-lg"><X className="h-5 w-5" /></button>
+      {/* ── MODAL: CONFIRM DELETE LAWYER ────────────────────────────────────── */}
+      {lawyerToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="card max-w-sm w-full p-6 text-center">
+            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 className="h-6 w-6" /></div>
+            <h3 className="font-bold text-slate-900 text-lg mb-2">Remove Attorney?</h3>
+            <p className="text-gray-500 text-xs mb-6">Are you sure you want to remove <span className="font-bold text-slate-800">{lawyerToDelete.full_name || lawyerToDelete.user?.full_name}</span> from the directory?</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setLawyerToDelete(null)} className="btn-outline text-xs py-2 px-4">Cancel</button>
+              <button onClick={confirmDeleteLawyer} className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2 px-4 rounded-lg">Confirm Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: EDIT / CREATE DOCUMENT ───────────────────────────────────── */}
+      {editingResource && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="card max-w-2xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200 mb-5">
+              <h2 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-gold" /> {isCreatingResource ? "Add New Legal Document" : "Edit Document"}
+              </h2>
+              <button onClick={() => setEditingResource(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg"><X className="h-5 w-5" /></button>
             </div>
 
-            <form onSubmit={handleSaveSlide} className="space-y-4">
-              {/* Image URL + live preview */}
+            <form onSubmit={handleSaveResource} className="space-y-4 text-sm">
               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Image URL <span className="text-red-500">*</span></label>
-                <input
-                  type="url"
-                  required
-                  value={editingSlide.image_url}
-                  onChange={(e) => { setEditingSlide({ ...editingSlide, image_url: e.target.value }); setPreviewUrl(e.target.value); }}
-                  placeholder="https://images.unsplash.com/photo-... or your image link"
-                  className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary"
-                />
-                <p className="text-[11px] text-gray-400 mt-1">💡 Use Unsplash, Pexels, or any public image URL. Recommended size: 1000×1000px.</p>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Document Title</label>
+                <input type="text" required value={editingResource.title} onChange={(e) => setEditingResource({ ...editingResource, title: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg" />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Category</label>
+                  <select value={editingResource.category} onChange={(e) => setEditingResource({ ...editingResource, category: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg">
+                    <option>Constitution</option><option>Corporate Law</option><option>Criminal Law</option><option>Family Law</option><option>Cyber Crime</option><option>Taxation</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Jurisdiction</label>
+                  <input type="text" value={editingResource.jurisdiction} onChange={(e) => setEditingResource({ ...editingResource, jurisdiction: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Summary Overview</label>
+                <textarea rows={2} required value={editingResource.summary} onChange={(e) => setEditingResource({ ...editingResource, summary: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Full Content (Markdown Supported)</label>
+                <textarea rows={6} required value={editingResource.content} onChange={(e) => setEditingResource({ ...editingResource, content: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg font-mono text-xs" />
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <button type="button" onClick={() => setEditingResource(null)} className="btn-outline text-xs py-2 px-4">Cancel</button>
+                <button type="submit" className="btn-primary text-xs py-2 px-5">Save Document</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
-              {/* Live Image Preview */}
+      {/* ── MODAL: EDIT / CREATE HERO SLIDE ─────────────────────────────────── */}
+      {editingSlide && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="card max-w-xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200 mb-5">
+              <h2 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-gold" /> {isCreatingSlide ? "Add New Hero Banner" : "Edit Hero Banner"}
+              </h2>
+              <button onClick={() => setEditingSlide(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg"><X className="h-5 w-5" /></button>
+            </div>
+
+            <form onSubmit={handleSaveSlide} className="space-y-4 text-sm">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Headline Title</label>
+                <input type="text" required value={editingSlide.title} onChange={(e) => setEditingSlide({ ...editingSlide, title: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Subtitle</label>
+                <textarea rows={2} value={editingSlide.subtitle || ""} onChange={(e) => setEditingSlide({ ...editingSlide, subtitle: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Image URL</label>
+                <input type="url" required value={editingSlide.image_url} onChange={(e) => { setEditingSlide({ ...editingSlide, image_url: e.target.value }); setPreviewUrl(e.target.value); }} className="w-full p-2.5 border border-gray-300 rounded-lg text-xs" />
+              </div>
               {previewUrl && (
-                <div className="relative rounded-xl overflow-hidden h-40 border border-gray-200 bg-slate-100">
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent flex items-end p-3">
-                    <p className="text-white text-xs font-semibold">Preview — this is how it looks on the homepage</p>
-                  </div>
+                <div className="rounded-lg overflow-hidden border border-gray-200 h-32">
+                  <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" onError={() => setPreviewUrl("")} />
                 </div>
               )}
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Slide Title <span className="text-red-500">*</span></label>
-                <input type="text" required value={editingSlide.title} onChange={(e) => setEditingSlide({ ...editingSlide, title: e.target.value })} placeholder="e.g. Legal Guidance. Simplified for Everyone." className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" />
-                <p className="text-[11px] text-gray-400 mt-1">Tip: Use a period (.) in the title to split it into two lines with a gold-colored second part.</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Subtitle / Description</label>
-                <textarea rows={2} value={editingSlide.subtitle || ""} onChange={(e) => setEditingSlide({ ...editingSlide, subtitle: e.target.value })} placeholder="Supporting text shown below the title..." className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Button Text</label>
-                  <input type="text" value={editingSlide.button_text || ""} onChange={(e) => setEditingSlide({ ...editingSlide, button_text: e.target.value })} placeholder="e.g. Find a Lawyer" className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" />
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Button Text</label>
+                  <input type="text" value={editingSlide.button_text || ""} onChange={(e) => setEditingSlide({ ...editingSlide, button_text: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Button Link (URL)</label>
-                  <input type="text" value={editingSlide.button_url || ""} onChange={(e) => setEditingSlide({ ...editingSlide, button_url: e.target.value })} placeholder="e.g. /lawyers or /resources" className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" />
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Button Link</label>
+                  <input type="text" value={editingSlide.button_url || ""} onChange={(e) => setEditingSlide({ ...editingSlide, button_url: e.target.value })} className="w-full p-2.5 border border-gray-300 rounded-lg" />
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Sort Order</label>
-                  <input type="number" min={0} value={editingSlide.sort_order} onChange={(e) => setEditingSlide({ ...editingSlide, sort_order: parseInt(e.target.value) || 0 })} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" />
-                  <p className="text-[11px] text-gray-400 mt-1">Lower number = shown first (0, 1, 2…)</p>
-                </div>
-                <div className="flex flex-col justify-center">
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Visibility</label>
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className="relative">
-                      <input type="checkbox" checked={editingSlide.is_active} onChange={(e) => setEditingSlide({ ...editingSlide, is_active: e.target.checked })} className="sr-only peer" />
-                      <div className="w-11 h-6 bg-gray-200 peer-checked:bg-primary rounded-full transition-colors" />
-                      <div className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5" />
-                    </div>
-                    <span className="text-sm font-semibold text-slate-700">{editingSlide.is_active ? "Visible on homepage" : "Hidden from homepage"}</span>
-                  </label>
-                </div>
+              <div className="flex items-center justify-between pt-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={editingSlide.is_active} onChange={(e) => setEditingSlide({ ...editingSlide, is_active: e.target.checked })} className="h-4 w-4 text-primary rounded" />
+                  <span className="text-xs font-bold text-gray-700">Slide is Active</span>
+                </label>
               </div>
-
-              <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
-                <button type="button" onClick={() => { setEditingSlide(null); setPreviewUrl(""); }} className="btn-outline text-xs py-2 px-4 font-semibold">Cancel</button>
-                <button type="submit" className="btn-primary text-xs py-2 px-5 font-bold shadow-md flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-gold" />
-                  {isCreatingSlide ? "Create & Publish Slide" : "Save Changes"}
-                </button>
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <button type="button" onClick={() => setEditingSlide(null)} className="btn-outline text-xs py-2 px-4">Cancel</button>
+                <button type="submit" className="btn-primary text-xs py-2 px-5">Save Slide</button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* ── MODAL: CONFIRM DELETE HERO SLIDE ─────────────────────────────────── */}
+      {slideToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="card max-w-sm w-full p-6 text-center">
+            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 className="h-6 w-6" /></div>
+            <h3 className="font-bold text-slate-900 text-lg mb-2">Delete Slide?</h3>
+            <p className="text-gray-500 text-xs mb-6">Are you sure you want to remove <span className="font-bold text-slate-800">"{slideToDelete.title}"</span>?</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setSlideToDelete(null)} className="btn-outline text-xs py-2 px-4">Cancel</button>
+              <button onClick={confirmDeleteSlide} className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2 px-4 rounded-lg">Confirm Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
-

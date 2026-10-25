@@ -6,17 +6,35 @@ export async function POST(req: Request) {
     const user = getUserFromRequest(req.headers.get("authorization"));
     const body = await req.json();
 
+    let clientId = body.client_id;
+    let lawyerId = body.lawyer_id;
+
+    if (user?.role === "lawyer") {
+      const lawyer = db.lawyers.find(
+        (l) => l.user_id === user.id || l.email.toLowerCase() === user.email.toLowerCase()
+      );
+      lawyerId = lawyer ? lawyer.id : 1;
+      const firstClient = db.users.find((u) => u.role === "client");
+      clientId = clientId || (firstClient?.id || 2);
+    } else if (user) {
+      clientId = user.id;
+      lawyerId = lawyerId || 1;
+    } else {
+      clientId = 2;
+      lawyerId = lawyerId || 1;
+    }
+
     const newApp: Appointment = {
       id: db.appointments.length + 1,
-      client_id: user ? user.id : 2,
-      lawyer_id: body.lawyer_id || 1,
-      specialization: body.specialization || "General",
+      client_id: clientId,
+      lawyer_id: lawyerId,
+      specialization: body.specialization || "General Consultation",
       consultation_type: body.consultation_type || "Video Call",
       date: body.date || new Date().toISOString().split("T")[0],
       time_slot: body.time_slot || "10:00 AM",
       brief_subject: body.brief_subject || "Legal Consultation",
       detailed_description: body.detailed_description || "",
-      status: "pending",
+      status: body.status || "confirmed",
     };
 
     db.appointments.push(newApp);

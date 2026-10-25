@@ -18,11 +18,23 @@ export async function GET(req: Request) {
     }
   }
 
-  // Ensure lawyer details are attached to each appointment
+  // Ensure lawyer and client details are attached to each appointment
   const formatted = apps.map((a) => {
     const lawyer = db.lawyers.find((l) => l.id === a.lawyer_id) || db.lawyers[0];
+    const client = db.users.find((u) => u.id === a.client_id) || {
+      id: 2,
+      full_name: "John Doe",
+      email: "john@example.com",
+      phone: "+1 555-019-2831",
+    };
     return {
       ...a,
+      client: {
+        id: client.id,
+        full_name: client.full_name,
+        email: client.email,
+        phone: client.phone,
+      },
       lawyer: a.lawyer || (lawyer
         ? {
             id: lawyer.id,

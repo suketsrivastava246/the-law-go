@@ -112,6 +112,24 @@ const initialUsers: User[] = [
     role: "client",
     is_active: true,
   },
+  {
+    id: 4,
+    full_name: "Robert Taylor",
+    email: "robert.taylor@techventures.io",
+    phone: "+1 415-555-8822",
+    password_hash: "password123",
+    role: "client",
+    is_active: true,
+  },
+  {
+    id: 5,
+    full_name: "Emily Davis",
+    email: "emily.davis@healthcorp.org",
+    phone: "+1 617-555-9011",
+    password_hash: "password123",
+    role: "client",
+    is_active: true,
+  },
   // All 6 Verified Lawyer Users for Demo & Production Login
   {
     id: 101,

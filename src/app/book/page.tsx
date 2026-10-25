@@ -21,6 +21,8 @@ function BookingContent() {
   // Form State
   const [specialization, setSpecialization] = useState("Family & Marriage Law");
   const [lawyerId, setLawyerId] = useState(preselectedLawyerId);
+  const [clientId, setClientId] = useState<number>(2);
+  const [clients, setClients] = useState<any[]>([]);
   const [consultationType, setConsultationType] = useState("Video Call");
   const [date, setDate] = useState("2026-11-05");
   const [timeSlot, setTimeSlot] = useState("10:00 AM");
