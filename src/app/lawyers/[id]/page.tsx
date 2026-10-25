@@ -60,6 +60,8 @@ export default function LawyerProfilePage({ params }: { params: Promise<{ id: st
     ? lawyer.languages.split(",").map((l: string) => l.trim()) 
     : ["English"];
 
+  const lawyerName = lawyer.user?.full_name || lawyer.full_name || "Verified Legal Counsel";
+
   return (
     <div className="bg-ivory min-h-screen pb-20">
       <div className="bg-primary pt-8 pb-32">
@@ -91,18 +93,18 @@ export default function LawyerProfilePage({ params }: { params: Promise<{ id: st
                 {lawyer.avatar_url ? (
                   <img 
                     src={lawyer.avatar_url} 
-                    alt={lawyer.user?.full_name} 
+                    alt={lawyerName} 
                     className="w-28 h-28 md:w-32 md:h-32 rounded-2xl object-cover shadow-md border-4 border-white shrink-0"
                   />
                 ) : (
                   <div className="w-28 h-28 md:w-32 md:h-32 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-3xl shrink-0">
-                    {lawyer.user?.full_name?.charAt(0) || "L"}
+                    {lawyerName.charAt(0) || "L"}
                   </div>
                 )}
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h1 className="text-2xl md:text-3xl font-serif font-bold text-slate-900">
-                      {lawyer.user?.full_name}
+                      {lawyerName}
                     </h1>
                     {lawyer.is_verified && (
                       <ShieldCheck className="h-6 w-6 text-green-600 shrink-0" />
@@ -153,73 +155,81 @@ export default function LawyerProfilePage({ params }: { params: Promise<{ id: st
                     <li>Bar Registration Number: <span className="font-mono font-medium text-slate-800">{lawyer.bar_number}</span></li>
                   </ul>
                 </div>
-                
-                <div>
+
+                <div className="pt-4 border-t border-gray-100">
                   <h3 className="flex items-center gap-2 font-semibold text-slate-800 mb-2.5 text-sm">
-                    <Award className="h-4 w-4 text-primary" /> Primary Focus Area
+                    <Award className="h-4 w-4 text-primary" /> Core Practice Focus Areas
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    <span className="bg-blue-50 text-primary border border-blue-200 px-3 py-1 rounded-full text-xs font-semibold">
+                    <span className="bg-blue-50 text-primary border border-blue-200 text-xs px-3 py-1.5 rounded-lg font-medium">
                       {lawyer.specialization}
                     </span>
-                    <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">
-                      Legal Advisory
+                    <span className="bg-gray-50 text-slate-700 border border-gray-200 text-xs px-3 py-1.5 rounded-lg">
+                      Statutory Advisory
                     </span>
-                    <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">
-                      Contract & Dispute Representation
+                    <span className="bg-gray-50 text-slate-700 border border-gray-200 text-xs px-3 py-1.5 rounded-lg">
+                      Mediation & Trial Defense
                     </span>
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="flex items-center gap-2 font-semibold text-slate-800 mb-2 text-sm">
+                <div className="pt-4 border-t border-gray-100">
+                  <h3 className="flex items-center gap-2 font-semibold text-slate-800 mb-2.5 text-sm">
                     <Languages className="h-4 w-4 text-primary" /> Languages Spoken
                   </h3>
-                  <p className="text-gray-600 text-sm ml-6">{languagesList.join(", ")}</p>
+                  <div className="flex gap-2">
+                    {languagesList.map((lang: string, idx: number) => (
+                      <span key={idx} className="bg-gray-100 text-slate-700 text-xs px-3 py-1 rounded-md">
+                        {lang}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Booking / Action Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="card p-6 sticky top-24">
-              <div className="text-center pb-5 border-b border-gray-100 mb-5">
-                <p className="text-gray-500 text-xs uppercase tracking-wider font-semibold mb-1">Consultation Fee</p>
-                <p className="text-3xl font-bold text-slate-900">${lawyer.fee_per_hour}</p>
-                <p className="text-xs text-gray-400 mt-1">Per 45-Minute Session</p>
+          {/* Booking & Consultation Sidebar */}
+          <div className="space-y-6">
+            <div className="card p-6 md:p-8 sticky top-24 border-t-4 border-t-gold">
+              <div className="mb-6">
+                <span className="text-xs uppercase tracking-wider text-gray-400 font-bold block mb-1">
+                  Verified Consultation Rate
+                </span>
+                <div className="flex items-baseline gap-1">
+                  <p className="text-3xl font-bold text-slate-900">${lawyer.fee_per_hour}</p>
+                  <span className="text-gray-500 text-sm font-medium">/ 60-min session</span>
+                </div>
               </div>
-              
-              <div className="space-y-3">
+
+              <div className="space-y-3 mb-6">
                 <Link 
                   href={`/book?lawyer=${lawyer.id}`} 
                   className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold shadow-md"
                 >
-                  <Calendar className="h-4 w-4" /> Book Appointment
+                  <Calendar className="h-4 w-4 text-gold" /> Schedule Consultation
                 </Link>
                 <Link 
                   href={`/dashboard/secure-chat?lawyer=${lawyer.id}`} 
-                  className="btn-outline w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold"
+                  className="btn-outline w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold"
                 >
-                  <MessageSquare className="h-4 w-4" /> Start Secure Chat
+                  <MessageSquare className="h-4 w-4" /> Send Pre-Consult Inquiry
                 </Link>
               </div>
 
-              <div className="mt-6 pt-5 border-t border-gray-100">
-                <h3 className="font-bold text-slate-800 mb-3 text-xs uppercase tracking-wider">Availability Slots</h3>
-                <ul className="text-xs text-gray-600 space-y-2">
-                  <li className="flex items-start gap-2">
-                    <Clock className="h-4 w-4 shrink-0 text-primary mt-0.5" />
-                    <span>Mon - Fri: 10:00 AM – 5:00 PM</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Clock className="h-4 w-4 shrink-0 text-primary mt-0.5" />
-                    <span>Video / Audio / Secure Encrypted Chat</span>
-                  </li>
-                </ul>
+              <div className="border-t border-gray-100 pt-4 space-y-2.5 text-xs text-gray-500">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-green-600 shrink-0" />
+                  <span>Verified Legal License and Credentials</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary shrink-0" />
+                  <span>Prompt Response Within 24 Hours</span>
+                </div>
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </div>

@@ -30,6 +30,13 @@ export type Lawyer = {
   reviews_count: number;
   languages: string;
   is_verified: boolean;
+  user?: {
+    id: number;
+    full_name: string;
+    email: string;
+    phone: string;
+    role: string;
+  };
 };
 
 export type LegalResource = {
@@ -66,9 +73,17 @@ export type Appointment = {
   brief_subject: string;
   detailed_description?: string;
   status: "pending" | "confirmed" | "completed" | "cancelled";
+  lawyer?: {
+    id: number;
+    full_name: string;
+    email: string;
+    phone: string;
+    specialization: string;
+    avatar_url?: string;
+  };
 };
 
-// Seed Data
+// ─── Initial Users (includes Admin, Clients, AND all 6 Verified Lawyers) ─────
 const initialUsers: User[] = [
   {
     id: 1,
@@ -97,6 +112,61 @@ const initialUsers: User[] = [
     role: "client",
     is_active: true,
   },
+  // All 6 Verified Lawyer Users for Demo & Production Login
+  {
+    id: 101,
+    full_name: "Adv. Sarah Jenkins",
+    email: "sarah.jenkins@thelawgo.com",
+    phone: "+1 212-555-0143",
+    password_hash: "password123",
+    role: "lawyer",
+    is_active: true,
+  },
+  {
+    id: 102,
+    full_name: "Adv. Michael Chen",
+    email: "michael.chen@thelawgo.com",
+    phone: "+1 415-555-0188",
+    password_hash: "password123",
+    role: "lawyer",
+    is_active: true,
+  },
+  {
+    id: 103,
+    full_name: "Adv. Marcus Vance",
+    email: "marcus.vance@thelawgo.com",
+    phone: "+1 312-555-0199",
+    password_hash: "password123",
+    role: "lawyer",
+    is_active: true,
+  },
+  {
+    id: 104,
+    full_name: "Adv. Priya Sharma",
+    email: "priya.sharma@thelawgo.com",
+    phone: "+1 512-555-0177",
+    password_hash: "password123",
+    role: "lawyer",
+    is_active: true,
+  },
+  {
+    id: 105,
+    full_name: "Adv. Elena Rostova",
+    email: "elena.rostova@thelawgo.com",
+    phone: "+1 206-555-0133",
+    password_hash: "password123",
+    role: "lawyer",
+    is_active: true,
+  },
+  {
+    id: 106,
+    full_name: "Adv. David Miller",
+    email: "david.miller@thelawgo.com",
+    phone: "+1 617-555-0112",
+    password_hash: "password123",
+    role: "lawyer",
+    is_active: true,
+  },
 ];
 
 const initialLawyers: Lawyer[] = [
@@ -118,6 +188,13 @@ const initialLawyers: Lawyer[] = [
     reviews_count: 124,
     languages: "English, Spanish",
     is_verified: true,
+    user: {
+      id: 101,
+      full_name: "Adv. Sarah Jenkins",
+      email: "sarah.jenkins@thelawgo.com",
+      phone: "+1 212-555-0143",
+      role: "lawyer",
+    },
   },
   {
     id: 2,
@@ -137,6 +214,13 @@ const initialLawyers: Lawyer[] = [
     reviews_count: 89,
     languages: "English, Mandarin",
     is_verified: true,
+    user: {
+      id: 102,
+      full_name: "Adv. Michael Chen",
+      email: "michael.chen@thelawgo.com",
+      phone: "+1 415-555-0188",
+      role: "lawyer",
+    },
   },
   {
     id: 3,
@@ -156,6 +240,13 @@ const initialLawyers: Lawyer[] = [
     reviews_count: 152,
     languages: "English",
     is_verified: true,
+    user: {
+      id: 103,
+      full_name: "Adv. Marcus Vance",
+      email: "marcus.vance@thelawgo.com",
+      phone: "+1 312-555-0199",
+      role: "lawyer",
+    },
   },
   {
     id: 4,
@@ -175,6 +266,13 @@ const initialLawyers: Lawyer[] = [
     reviews_count: 68,
     languages: "English, Hindi",
     is_verified: true,
+    user: {
+      id: 104,
+      full_name: "Adv. Priya Sharma",
+      email: "priya.sharma@thelawgo.com",
+      phone: "+1 512-555-0177",
+      role: "lawyer",
+    },
   },
   {
     id: 5,
@@ -194,6 +292,13 @@ const initialLawyers: Lawyer[] = [
     reviews_count: 42,
     languages: "English, Russian, French",
     is_verified: true,
+    user: {
+      id: 105,
+      full_name: "Adv. Elena Rostova",
+      email: "elena.rostova@thelawgo.com",
+      phone: "+1 206-555-0133",
+      role: "lawyer",
+    },
   },
   {
     id: 6,
@@ -213,6 +318,13 @@ const initialLawyers: Lawyer[] = [
     reviews_count: 94,
     languages: "English",
     is_verified: true,
+    user: {
+      id: 106,
+      full_name: "Adv. David Miller",
+      email: "david.miller@thelawgo.com",
+      phone: "+1 617-555-0112",
+      role: "lawyer",
+    },
   },
 ];
 
@@ -371,6 +483,14 @@ const initialAppointments: Appointment[] = [
     brief_subject: "Child Custody & Parenting Agreement Review",
     detailed_description: "Seeking legal advice regarding formalizing holiday parenting schedules.",
     status: "confirmed",
+    lawyer: {
+      id: 1,
+      full_name: "Adv. Sarah Jenkins",
+      email: "sarah.jenkins@thelawgo.com",
+      phone: "+1 212-555-0143",
+      specialization: "Family & Marriage Law",
+      avatar_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400&auto=format&fit=crop",
+    },
   },
 ];
 

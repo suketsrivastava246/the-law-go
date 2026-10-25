@@ -28,8 +28,12 @@ export default function LoginPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Invalid email or password");
+        let msg = "Invalid email or password";
+        try {
+          const errorData = await response.json();
+          msg = errorData.detail || msg;
+        } catch {}
+        throw new Error(msg);
       }
 
       const data = await response.json();
@@ -37,7 +41,11 @@ export default function LoginPage() {
       
       // Notify components of auth state change
       window.dispatchEvent(new Event("storage"));
-      router.push("/dashboard");
+      if (data.user?.role === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -131,7 +139,7 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input 
-                  type="password"
+                  type="password" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm" 
@@ -167,6 +175,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-
-

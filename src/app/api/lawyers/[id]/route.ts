@@ -13,7 +13,16 @@ export async function GET(
     return NextResponse.json({ detail: "Lawyer not found" }, { status: 404 });
   }
 
-  return NextResponse.json(lawyer);
+  return NextResponse.json({
+    ...lawyer,
+    user: lawyer.user || {
+      id: lawyer.user_id,
+      full_name: lawyer.full_name,
+      email: lawyer.email,
+      phone: lawyer.phone,
+      role: "lawyer",
+    },
+  });
 }
 
 export async function DELETE(

@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Calendar, Clock, Bookmark, MessageSquare, Settings, LogOut, 
-  ChevronRight, User, ShieldCheck, Video, Phone, Plus, UserCheck, AlertCircle 
+  ChevronRight, User, ShieldCheck, Video, Phone, Plus, UserCheck, AlertCircle, Briefcase
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { fetchAPI } from "@/lib/api";
@@ -152,6 +152,11 @@ export default function UserDashboard() {
               <ShieldCheck className="h-4 w-4 text-amber-600" /> Admin Control Portal
             </Link>
           )}
+          {user.role === "lawyer" && (
+            <Link href="/lawyers/1" className="flex items-center gap-3 px-3 py-2.5 bg-blue-50 text-primary border border-blue-200 hover:bg-blue-100 rounded-lg font-bold text-sm transition-colors mt-2">
+              <Briefcase className="h-4 w-4 text-gold" /> My Public Profile
+            </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-gray-200 mt-auto md:absolute md:bottom-0 md:w-64 bg-white">
@@ -177,12 +182,29 @@ export default function UserDashboard() {
                 Here is an overview of your active legal matters, consultations, and verified documents.
               </p>
             </div>
-            <Link 
-              href="/book" 
-              className="btn-primary inline-flex items-center gap-2 text-sm font-semibold py-2.5 px-4 shrink-0 shadow-sm"
-            >
-              <Plus className="h-4 w-4" /> Book New Consultation
-            </Link>
+            {user.role === "lawyer" ? (
+              <div className="flex gap-2">
+                <Link 
+                  href="/lawyers/1" 
+                  className="btn-primary inline-flex items-center gap-2 text-sm font-semibold py-2.5 px-4 shrink-0 shadow-sm"
+                >
+                  <Briefcase className="h-4 w-4 text-gold" /> View My Profile
+                </Link>
+                <Link 
+                  href="/lawyers" 
+                  className="btn-outline inline-flex items-center gap-2 text-sm font-semibold py-2.5 px-4 shrink-0"
+                >
+                  Directory
+                </Link>
+              </div>
+            ) : (
+              <Link 
+                href="/book" 
+                className="btn-primary inline-flex items-center gap-2 text-sm font-semibold py-2.5 px-4 shrink-0 shadow-sm"
+              >
+                <Plus className="h-4 w-4" /> Book New Consultation
+              </Link>
+            )}
           </div>
 
           {/* Admin Quick Action Banner */}
@@ -205,6 +227,37 @@ export default function UserDashboard() {
               >
                 Open Admin Portal
               </Link>
+            </div>
+          )}
+
+          {/* Lawyer Quick Action Banner */}
+          {user.role === "lawyer" && (
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary text-gold flex items-center justify-center font-bold shrink-0">
+                  <Briefcase className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Verified Legal Practitioner Center</h3>
+                  <p className="text-xs text-gray-600">
+                    Your profile is actively listed and verified for client consultations in the directory.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link 
+                  href="/lawyers/1" 
+                  className="bg-primary hover:bg-primary-dark text-white font-bold text-xs py-2 px-4 rounded-lg shadow-2xs transition"
+                >
+                  View My Public Profile
+                </Link>
+                <Link 
+                  href="/lawyers" 
+                  className="btn-outline text-xs py-2 px-3 rounded-lg"
+                >
+                  Browse Lawyers
+                </Link>
+              </div>
             </div>
           )}
 
@@ -335,5 +388,3 @@ export default function UserDashboard() {
     </div>
   );
 }
-
-

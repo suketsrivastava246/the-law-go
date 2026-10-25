@@ -15,5 +15,17 @@ export async function GET(req: Request) {
     list = list.filter((l) => l.location.toLowerCase().includes(location.toLowerCase()));
   }
 
-  return NextResponse.json(list);
+  // Ensure every lawyer has the nested user object expected by the frontend
+  const formatted = list.map((l) => ({
+    ...l,
+    user: l.user || {
+      id: l.user_id,
+      full_name: l.full_name,
+      email: l.email,
+      phone: l.phone,
+      role: "lawyer",
+    },
+  }));
+
+  return NextResponse.json(formatted);
 }
