@@ -339,7 +339,7 @@ export default function WhatsAppStyleSecureChat() {
   );
 
   return (
-    <div className="bg-[#111b21] min-h-screen text-slate-100 flex flex-col md:flex-row h-screen overflow-hidden font-sans">
+    <div className="h-full w-full bg-[#111b21] text-slate-100 flex flex-col md:flex-row overflow-hidden font-sans select-none">
       
       {/* ================= LEFT SIDEBAR (WHATSAPP WEB CONTACT LIST) ================= */}
       <aside className={`w-full md:w-96 lg:w-[420px] bg-[#111b21] border-r border-[#222e35] flex flex-col shrink-0 h-full ${showProfileDrawer ? 'hidden lg:flex' : 'flex'}`}>

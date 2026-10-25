@@ -54,6 +54,10 @@ export async function PUT(
     if (body.avatar_url !== undefined) lawyer.avatar_url = body.avatar_url;
     if (body.languages !== undefined) lawyer.languages = body.languages;
     if (body.is_verified !== undefined) lawyer.is_verified = Boolean(body.is_verified);
+    if (body.linkedin_url !== undefined) lawyer.linkedin_url = body.linkedin_url;
+    if (body.support_email !== undefined) lawyer.support_email = body.support_email;
+    if (body.contact_email !== undefined) lawyer.contact_email = body.contact_email;
+    if (body.is_publicly_visible !== undefined) lawyer.is_publicly_visible = Boolean(body.is_publicly_visible);
 
     // Keep lawyer.user in sync
     lawyer.user = {

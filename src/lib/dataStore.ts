@@ -12,6 +12,15 @@ export type User = {
   is_active: boolean;
 };
 
+export type SiteSettings = {
+  support_email: string;
+  contact_email: string;
+  phone: string;
+  emergency_hotline: string;
+  linkedin_url: string;
+  office_address: string;
+};
+
 export type Lawyer = {
   id: number;
   user_id: number;
@@ -30,6 +39,10 @@ export type Lawyer = {
   reviews_count: number;
   languages: string;
   is_verified: boolean;
+  linkedin_url?: string;
+  support_email?: string;
+  contact_email?: string;
+  is_publicly_visible?: boolean;
   user?: {
     id: number;
     full_name: string;
@@ -206,6 +219,10 @@ const initialLawyers: Lawyer[] = [
     reviews_count: 124,
     languages: "English, Spanish",
     is_verified: true,
+    linkedin_url: "https://www.linkedin.com/in/sarah-jenkins-law",
+    support_email: "sarah.support@thelawgo.com",
+    contact_email: "sarah.jenkins@thelawgo.com",
+    is_publicly_visible: true,
     user: {
       id: 101,
       full_name: "Adv. Sarah Jenkins",
@@ -512,6 +529,15 @@ const initialAppointments: Appointment[] = [
   },
 ];
 
+const initialSiteSettings: SiteSettings = {
+  support_email: "support@thelawgo.com",
+  contact_email: "contact@thelawgo.com",
+  phone: "+1 (234) 567-890",
+  emergency_hotline: "+1 800-555-0199",
+  linkedin_url: "https://www.linkedin.com/company/the-law-go",
+  office_address: "Empire State Building, Suite 4800, New York, NY 10118",
+};
+
 // Attach to globalThis to retain in-memory state across Next.js API requests
 const g = globalThis as unknown as {
   __thelawgo_users?: User[];
@@ -519,6 +545,7 @@ const g = globalThis as unknown as {
   __thelawgo_resources?: LegalResource[];
   __thelawgo_slides?: HeroSlide[];
   __thelawgo_appointments?: Appointment[];
+  __thelawgo_settings?: SiteSettings;
 };
 
 if (!g.__thelawgo_users) g.__thelawgo_users = [...initialUsers];
@@ -526,6 +553,7 @@ if (!g.__thelawgo_lawyers) g.__thelawgo_lawyers = [...initialLawyers];
 if (!g.__thelawgo_resources) g.__thelawgo_resources = [...initialResources];
 if (!g.__thelawgo_slides) g.__thelawgo_slides = [...initialHeroSlides];
 if (!g.__thelawgo_appointments) g.__thelawgo_appointments = [...initialAppointments];
+if (!g.__thelawgo_settings) g.__thelawgo_settings = { ...initialSiteSettings };
 
 export const db = {
   users: g.__thelawgo_users,
@@ -533,6 +561,7 @@ export const db = {
   resources: g.__thelawgo_resources,
   slides: g.__thelawgo_slides,
   appointments: g.__thelawgo_appointments,
+  siteSettings: g.__thelawgo_settings,
 };
 
 // ── Auth Token Helpers ────────────────────────────────────────────────────────

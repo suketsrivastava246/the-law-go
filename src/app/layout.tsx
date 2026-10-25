@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "THE LAW GO | Legal Guidance. Simplified for Everyone.",
@@ -24,9 +23,7 @@ export default function RootLayout({
         />
       </head>
       <body className="flex min-h-screen flex-col bg-ivory font-sans text-slate-900">
-        <Navbar />
-        <main className="flex-grow">{children}</main>
-        <Footer />
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

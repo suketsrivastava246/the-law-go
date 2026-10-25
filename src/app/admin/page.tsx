@@ -6,7 +6,7 @@ import API_BASE from "@/lib/api";
 import {
   Shield, Trash2, Edit3, Plus, Scale, BookOpen,
   CheckCircle2, AlertCircle, Search, RefreshCw, X, ArrowLeft,
-  Check, Lock, ExternalLink, Image as ImageIcon, EyeOff, Eye, User, Phone, Mail
+  Check, Lock, ExternalLink, Image as ImageIcon, EyeOff, Eye, User, Phone, Mail, Globe, Share2
 } from "lucide-react";
 import { fetchAPI } from "@/lib/api";
 
@@ -27,6 +27,10 @@ type Lawyer = {
   is_verified: boolean;
   avatar_url?: string;
   languages?: string;
+  linkedin_url?: string;
+  support_email?: string;
+  contact_email?: string;
+  is_publicly_visible?: boolean;
   user?: {
     full_name: string;
     email: string;
@@ -82,7 +86,21 @@ const BLANK_SLIDE: Omit<HeroSlide, "id" | "created_at"> = {
 export default function AdminPortal() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"lawyers" | "clients" | "documents" | "slides">("lawyers");
+  const [activeTab, setActiveTab] = useState<"lawyers" | "clients" | "documents" | "slides" | "profiles">("lawyers");
+
+  // Website Profiles & Support Settings State
+  const [siteSettings, setSiteSettings] = useState({
+    support_email: "support@thelawgo.com",
+    contact_email: "contact@thelawgo.com",
+    phone: "+1 (234) 567-890",
+    emergency_hotline: "+1 800-555-0199",
+    linkedin_url: "https://www.linkedin.com/company/the-law-go",
+    office_address: "Empire State Building, Suite 4800, New York, NY 10118",
+  });
+  const [siteSettingsLoading, setSiteSettingsLoading] = useState(false);
+  const [siteSettingsSaving, setSiteSettingsSaving] = useState(false);
+  const [editingProfileSocials, setEditingProfileSocials] = useState<Lawyer | null>(null);
+  const [profileSearch, setProfileSearch] = useState("");
 
   // Lawyers state
   const [lawyers, setLawyers] = useState<Lawyer[]>([]);
@@ -181,6 +199,18 @@ export default function AdminPortal() {
     finally { setResourcesLoading(false); }
   };
 
+  const loadSiteSettings = async () => {
+    setSiteSettingsLoading(true);
+    try {
+      const data = await fetchAPI("/site-settings");
+      if (data) setSiteSettings(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSiteSettingsLoading(false);
+    }
+  };
+
   const loadSlides = async () => {
     setSlidesLoading(true);
     try { const data = await fetchAPI("/hero-slides/admin/all"); if (data) setSlides(data); }
@@ -194,8 +224,44 @@ export default function AdminPortal() {
       loadClients();
       loadResources();
       loadSlides();
+      loadSiteSettings();
     }
   }, [currentUser]);
+
+  // ── Site Settings & Profile Actions ────────────────────────────────────────
+  const handleSaveSiteSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSiteSettingsSaving(true);
+    try {
+      const res = await fetchAPI("/site-settings", {
+        method: "PUT",
+        body: JSON.stringify(siteSettings),
+      });
+      if (res) {
+        showToast("Official contact emails and LinkedIn settings saved successfully.");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to save settings", "error");
+    } finally {
+      setSiteSettingsSaving(false);
+    }
+  };
+
+  const handleSaveProfileSocials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProfileSocials) return;
+    try {
+      const updated = await fetchAPI(`/lawyers/${editingProfileSocials.id}`, {
+        method: "PUT",
+        body: JSON.stringify(editingProfileSocials),
+      });
+      setLawyers((prev) => prev.map((l) => (l.id === updated.id ? { ...l, ...updated } : l)));
+      showToast(`Profile & socials for ${editingProfileSocials.full_name || editingProfileSocials.user?.full_name} updated.`);
+      setEditingProfileSocials(null);
+    } catch (err: any) {
+      showToast(err.message || "Failed to update profile", "error");
+    }
+  };
 
   // ── Lawyer Actions ────────────────────────────────────────────────────────
   const confirmDeleteLawyer = async () => {
@@ -449,6 +515,7 @@ export default function AdminPortal() {
             { key: "clients", label: `Clients (${clients.length})`, icon: <User className="h-4 w-4" /> },
             { key: "documents", label: `Legal Documents (${resources.length})`, icon: <BookOpen className="h-4 w-4" /> },
             { key: "slides", label: `Hero Slides (${slides.length})`, icon: <ImageIcon className="h-4 w-4" /> },
+            { key: "profiles", label: `Website Profiles & Support`, icon: <Globe className="h-4 w-4" /> },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -774,6 +841,242 @@ export default function AdminPortal() {
         )}
 
       </div>
+
+        {/* ══ TAB 5: WEBSITE PROFILES & CONTACT SETTINGS ═════════════════════ */}
+        {activeTab === "profiles" && (
+          <div className="space-y-8">
+            
+            {/* Top Info Banner */}
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-primary" /> Website Public Presence & Support Management
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Configure official support email IDs, organization LinkedIn URL, emergency contact phone, and manage practitioner public directory presence.
+                </p>
+              </div>
+              <button 
+                onClick={loadSiteSettings} 
+                className="btn-outline text-xs py-2 px-3 self-start md:self-auto flex items-center gap-1.5"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> Refresh Settings
+              </button>
+            </div>
+
+            {/* Section 1: Official Website & Support Contact Settings */}
+            <div className="card p-6 border border-gray-200 shadow-sm">
+              <h3 className="font-bold text-slate-900 text-sm mb-4 pb-2 border-b border-gray-100 uppercase tracking-wider text-primary flex items-center gap-2">
+                <Mail className="h-4 w-4 text-gold" /> Official Platform Support & Social Profiles
+              </h3>
+
+              <form onSubmit={handleSaveSiteSettings} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Customer Support Email ID
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="support@thelawgo.com"
+                      value={siteSettings.support_email}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, support_email: e.target.value })}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary font-medium"
+                    />
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Rendered in footer, help center, and client inquiry confirmations.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      General Contact & Editorial Email ID
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="contact@thelawgo.com"
+                      value={siteSettings.contact_email}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, contact_email: e.target.value })}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary font-medium"
+                    />
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      General inquiries and media correspondence email.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Official LinkedIn Profile / Company Page URL
+                    </label>
+                    <input
+                      type="url"
+                      required
+                      placeholder="https://www.linkedin.com/company/the-law-go"
+                      value={siteSettings.linkedin_url}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, linkedin_url: e.target.value })}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary"
+                    />
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Linked directly in footer and public profile badges.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Official Phone / Support Hotline
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="+1 (234) 567-890"
+                      value={siteSettings.phone}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, phone: e.target.value })}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary"
+                    />
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Emergency helpline displayed across site footer.
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Headquarters / Office Address
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Empire State Building, Suite 4800, New York, NY 10118"
+                    value={siteSettings.office_address}
+                    onChange={(e) => setSiteSettings({ ...siteSettings, office_address: e.target.value })}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    disabled={siteSettingsSaving}
+                    className="btn-primary text-xs py-2.5 px-6 font-semibold flex items-center gap-2 shadow-sm"
+                  >
+                    {siteSettingsSaving ? "Saving Settings..." : "Save Website Contact & LinkedIn Settings"}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Section 2: Directory Profiles Visible on Website */}
+            <div className="card p-6 border border-gray-200 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider text-primary flex items-center gap-2">
+                    <User className="h-4 w-4 text-gold" /> Directory Practitioner Profiles
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Manage visible profiles, customize individual LinkedIn links, and configure dedicated client support email addresses.
+                  </p>
+                </div>
+                
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Filter by name or practice..."
+                    value={profileSearch}
+                    onChange={(e) => setProfileSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-50 text-gray-600 uppercase text-[10px] tracking-wider border-b border-gray-200">
+                    <tr>
+                      <th className="py-3 px-4">Practitioner</th>
+                      <th className="py-3 px-4">Contact Email</th>
+                      <th className="py-3 px-4">Support Email ID</th>
+                      <th className="py-3 px-4">LinkedIn Profile</th>
+                      <th className="py-3 px-4">Website Visibility</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {lawyers
+                      .filter((l) => {
+                        const q = profileSearch.toLowerCase();
+                        const name = l.user?.full_name || l.full_name || "";
+                        return name.toLowerCase().includes(q) || l.specialization?.toLowerCase().includes(q);
+                      })
+                      .map((lawyer) => (
+                        <tr key={lawyer.id} className="hover:bg-gray-50 transition">
+                          <td className="py-3 px-4 font-semibold text-slate-900 flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-primary text-gold flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden">
+                              {lawyer.avatar_url ? (
+                                <img src={lawyer.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                (lawyer.user?.full_name || lawyer.full_name || "L").charAt(0)
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-900">{lawyer.user?.full_name || lawyer.full_name}</p>
+                              <p className="text-[11px] text-gray-500">{lawyer.specialization}</p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-gray-600 font-mono text-[11px]">
+                            {lawyer.contact_email || lawyer.email || lawyer.user?.email || "—"}
+                          </td>
+                          <td className="py-3 px-4 text-gray-600 font-mono text-[11px]">
+                            {lawyer.support_email ? (
+                              <span className="text-primary font-semibold">{lawyer.support_email}</span>
+                            ) : (
+                              <span className="text-gray-400 italic">Default Support</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            {lawyer.linkedin_url ? (
+                              <a
+                                href={lawyer.linkedin_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[#0077b5] font-semibold hover:underline text-[11px]"
+                              >
+                                <span>LinkedIn</span>
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 italic">Not Added</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                              lawyer.is_publicly_visible !== false
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-200 text-gray-700"
+                            }`}>
+                              {lawyer.is_publicly_visible !== false ? "Visible" : "Hidden"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              onClick={() => setEditingProfileSocials({ ...lawyer })}
+                              className="bg-blue-50 hover:bg-blue-100 text-primary font-semibold text-xs py-1.5 px-3 rounded-lg border border-blue-200 inline-flex items-center gap-1 transition"
+                            >
+                              <Edit3 className="h-3 w-3" /> Edit Socials & Email
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        )}
 
       {/* ── MODAL: EDIT LAWYER (NEW) ────────────────────────────────────────── */}
       {editingLawyer && (
@@ -1148,6 +1451,128 @@ export default function AdminPortal() {
         </div>
       )}
 
+      {/* ── MODAL: EDIT DIRECTORY PROFILE & SOCIALS ──────────────────────────── */}
+      {editingProfileSocials && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="card max-w-lg w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200 mb-5">
+              <h2 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
+                <Globe className="h-5 w-5 text-primary" /> Edit Directory Profile & Socials
+              </h2>
+              <button onClick={() => setEditingProfileSocials(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfileSocials} className="space-y-4 text-sm">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Practitioner Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editingProfileSocials.full_name || editingProfileSocials.user?.full_name || ""}
+                  onChange={(e) => setEditingProfileSocials({ ...editingProfileSocials, full_name: e.target.value })}
+                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary text-xs sm:text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Direct Contact Email</label>
+                <input
+                  type="email"
+                  required
+                  value={editingProfileSocials.contact_email || editingProfileSocials.email || editingProfileSocials.user?.email || ""}
+                  onChange={(e) => setEditingProfileSocials({ ...editingProfileSocials, contact_email: e.target.value, email: e.target.value })}
+                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary text-xs sm:text-sm font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Dedicated Client Support Email ID
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g. support.counsel@thelawgo.com"
+                  value={editingProfileSocials.support_email || ""}
+                  onChange={(e) => setEditingProfileSocials({ ...editingProfileSocials, support_email: e.target.value })}
+                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary text-xs sm:text-sm font-mono"
+                />
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Clients contacting this attorney directly will receive assistance from this email ID.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  LinkedIn Profile URL
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://www.linkedin.com/in/attorney-profile"
+                  value={editingProfileSocials.linkedin_url || ""}
+                  onChange={(e) => setEditingProfileSocials({ ...editingProfileSocials, linkedin_url: e.target.value })}
+                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary text-xs sm:text-sm"
+                />
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Displayed as a clickable LinkedIn badge on their public profile page.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Specialization</label>
+                  <input
+                    type="text"
+                    value={editingProfileSocials.specialization || ""}
+                    onChange={(e) => setEditingProfileSocials({ ...editingProfileSocials, specialization: e.target.value })}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Fee ($ / hr)</label>
+                  <input
+                    type="number"
+                    value={editingProfileSocials.fee_per_hour || 0}
+                    onChange={(e) => setEditingProfileSocials({ ...editingProfileSocials, fee_per_hour: Number(e.target.value) })}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg text-xs font-bold text-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editingProfileSocials.is_publicly_visible !== false}
+                    onChange={(e) => setEditingProfileSocials({ ...editingProfileSocials, is_publicly_visible: e.target.checked })}
+                    className="h-4 w-4 text-primary rounded"
+                  />
+                  <span className="text-xs font-bold text-gray-800">
+                    Visible on Public Website Directory
+                  </span>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingProfileSocials(null)}
+                  className="btn-outline text-xs py-2 px-4"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary text-xs py-2 px-5"
+                >
+                  Save Profile Details
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

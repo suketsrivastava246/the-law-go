@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, Star, MapPin, ShieldCheck, Clock, Award, GraduationCap, Languages, MessageSquare, Calendar } from "lucide-react";
+import { ArrowLeft, Star, MapPin, ShieldCheck, Clock, Award, GraduationCap, Languages, MessageSquare, Calendar, ExternalLink } from "lucide-react";
 import API_BASE from "@/lib/api";
 
 export default function LawyerProfilePage({ params }: { params: Promise<{ id: string }> }) {
@@ -126,6 +126,26 @@ export default function LawyerProfilePage({ params }: { params: Promise<{ id: st
                       <span className="font-bold text-slate-800">{lawyer.rating || "4.9"}</span>
                       <span className="text-gray-400">({lawyer.reviews_count || 12} reviews)</span>
                     </div>
+                  </div>
+
+                  {/* LinkedIn & Verified Support Email */}
+                  <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-gray-100">
+                    {lawyer.linkedin_url && (
+                      <a 
+                        href={lawyer.linkedin_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold bg-[#0077b5]/10 hover:bg-[#0077b5]/20 text-[#0077b5] border border-[#0077b5]/30 px-3 py-1.5 rounded-lg transition"
+                      >
+                        <span>LinkedIn Profile</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                    {lawyer.support_email && (
+                      <span className="inline-flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
+                        <strong>Support:</strong> {lawyer.support_email}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
