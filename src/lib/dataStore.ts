@@ -96,6 +96,22 @@ export type Appointment = {
   };
 };
 
+export type ChatMessage = {
+  id: string;
+  conversation_key: string;
+  appointment_id?: number;
+  sender_role: "lawyer" | "client";
+  sender_id?: number;
+  sender_name: string;
+  recipient_role?: "lawyer" | "client";
+  recipient_id?: number;
+  text: string;
+  created_at: string;
+  time: string;
+  status: "sent" | "delivered" | "read";
+  attachment?: { name: string; size: string; type: string };
+};
+
 // ─── Initial Users (includes Admin, Clients, AND all 6 Verified Lawyers) ─────
 const initialUsers: User[] = [
   {
@@ -529,6 +545,53 @@ const initialAppointments: Appointment[] = [
   },
 ];
 
+const initialMessages: ChatMessage[] = [
+  {
+    id: "msg-1",
+    conversation_key: "lawyer-1_client-2",
+    appointment_id: 1,
+    sender_role: "client",
+    sender_name: "John Doe",
+    text: "Hello Counselor Sarah, I have submitted the draft agreement along with my notes.",
+    created_at: new Date(Date.now() - 3600000).toISOString(),
+    time: "10:15 AM",
+    status: "read",
+  },
+  {
+    id: "msg-2",
+    conversation_key: "lawyer-1_client-2",
+    appointment_id: 1,
+    sender_role: "lawyer",
+    sender_name: "Adv. Sarah Jenkins",
+    text: "Hello John, I have thoroughly reviewed Section 8 regarding the agreement clauses.",
+    created_at: new Date(Date.now() - 3000000).toISOString(),
+    time: "10:22 AM",
+    status: "read",
+  },
+  {
+    id: "msg-3",
+    conversation_key: "lawyer-1_client-2",
+    appointment_id: 1,
+    sender_role: "lawyer",
+    sender_name: "Adv. Sarah Jenkins",
+    text: "I have prepared the revised addendum to protect your interests. Let's discuss it in our upcoming session.",
+    created_at: new Date(Date.now() - 2400000).toISOString(),
+    time: "10:25 AM",
+    status: "read",
+  },
+  {
+    id: "msg-4",
+    conversation_key: "lawyer-1_client-2",
+    appointment_id: 1,
+    sender_role: "client",
+    sender_name: "John Doe",
+    text: "Thank you Counselor. When can we proceed with the review?",
+    created_at: new Date(Date.now() - 1200000).toISOString(),
+    time: "11:42 AM",
+    status: "read",
+  },
+];
+
 const initialSiteSettings: SiteSettings = {
   support_email: "support@thelawgo.com",
   contact_email: "contact@thelawgo.com",
@@ -546,6 +609,7 @@ const g = globalThis as unknown as {
   __thelawgo_slides?: HeroSlide[];
   __thelawgo_appointments?: Appointment[];
   __thelawgo_settings?: SiteSettings;
+  __thelawgo_messages?: ChatMessage[];
 };
 
 if (!g.__thelawgo_users) g.__thelawgo_users = [...initialUsers];
@@ -554,6 +618,7 @@ if (!g.__thelawgo_resources) g.__thelawgo_resources = [...initialResources];
 if (!g.__thelawgo_slides) g.__thelawgo_slides = [...initialHeroSlides];
 if (!g.__thelawgo_appointments) g.__thelawgo_appointments = [...initialAppointments];
 if (!g.__thelawgo_settings) g.__thelawgo_settings = { ...initialSiteSettings };
+if (!g.__thelawgo_messages) g.__thelawgo_messages = [...initialMessages];
 
 export const db = {
   users: g.__thelawgo_users,
@@ -562,6 +627,7 @@ export const db = {
   slides: g.__thelawgo_slides,
   appointments: g.__thelawgo_appointments,
   siteSettings: g.__thelawgo_settings,
+  messages: g.__thelawgo_messages,
 };
 
 // ── Auth Token Helpers ────────────────────────────────────────────────────────
